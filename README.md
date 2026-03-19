@@ -1,8 +1,10 @@
 # @codersbrew/pi-tools
 
-A publishable [pi](https://github.com/badlogic/pi-mono) package that bundles CodersBrew's custom pi extensions.
+A publishable [pi](https://github.com/badlogic/pi-mono) package that bundles CodersBrew's custom pi extensions and skills.
 
-## Included extensions
+## Included resources
+
+### Extensions
 
 ### `security`
 Protects common dangerous tool operations by:
@@ -15,6 +17,17 @@ Adds an interactive TUI for analyzing pi session history from `~/.pi/agent/sessi
 - sessions, messages, tokens, and cost over the last 7 / 30 / 90 days
 - model, cwd, day-of-week, and time-of-day breakdowns
 - contribution-style heatmap visualizations
+
+### Skill: `github-workflow`
+An opinionated GitHub workflow skill for branch creation, commits, pushes, PR creation, review, and merge work.
+
+It prefers `gh` for GitHub-aware actions and uses plain `git` where local source-control operations are the better tool.
+
+Invoke it in pi with:
+
+```bash
+/skill:github-workflow
+```
 
 ## Install
 
@@ -43,13 +56,15 @@ You can also add it manually to pi settings:
 This package uses pi's standard package manifest:
 - `extensions/security.ts`
 - `extensions/session-breakdown.ts`
+- `skills/github-workflow/SKILL.md`
 
 The root `package.json` exposes them through:
 
 ```json
 {
   "pi": {
-    "extensions": ["./extensions"]
+    "extensions": ["./extensions"],
+    "skills": ["./skills"]
   }
 }
 ```
@@ -86,8 +101,8 @@ Bootstrap steps for `@codersbrew/pi-tools`:
 
 1. Create an npm access token with publish rights
 2. Add it to the GitHub repo as `NPM_TOKEN`
-3. Confirm `package.json` has the intended version, currently `0.1.0`
-4. Push a version tag such as `v0.1.0`
+3. Confirm `package.json` has the intended version
+4. Push a matching version tag such as `v0.2.0`
 5. GitHub Actions will verify the package, publish it, and create a GitHub release
 
 ### Switch to trusted publishing after first release
@@ -106,7 +121,7 @@ After trusted publishing is configured, remove the `NPM_TOKEN` secret if you wan
 
 1. Update the package version in `package.json`
 2. Commit and push the change
-3. Create and push a matching version tag such as `v0.1.1`
+3. Create and push a matching version tag such as `v0.2.0`
 4. GitHub Actions will run verification, publish to npm, and create a GitHub release
 
 The workflow uses Node 24 so the npm CLI is new enough for trusted publishing and provenance support.
