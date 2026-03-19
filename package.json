@@ -1,6 +1,6 @@
 {
   "name": "@codersbrew/pi-tools",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A pi package bundling CodersBrew pi extensions.",
   "type": "module",
   "keywords": [
@@ -29,9 +29,10 @@
     "node": ">=20.6.0"
   },
   "scripts": {
+    "test": "node --test test/*.test.mjs",
     "typecheck": "tsc --noEmit",
     "pack:check": "npm pack --dry-run",
-    "check": "npm run typecheck && npm run pack:check"
+    "check": "npm run test && npm run typecheck && npm run pack:check"
   },
   "publishConfig": {
     "access": "public"
