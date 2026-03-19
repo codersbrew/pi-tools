@@ -45,6 +45,8 @@ jobs:
     permissions:
       contents: write
       id-token: write
+    env:
+      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
     steps:
       - name: Checkout
@@ -64,13 +66,11 @@ jobs:
         run: npm run check
 
       - name: Publish to npm with token
-        if: ${{ secrets.NPM_TOKEN != '' }}
+        if: env.NODE_AUTH_TOKEN != ''
         run: npm publish --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish to npm with trusted publishing
-        if: ${{ secrets.NPM_TOKEN == '' }}
+        if: env.NODE_AUTH_TOKEN == ''
         run: npm publish --access public --provenance
 
       - name: Create GitHub release
