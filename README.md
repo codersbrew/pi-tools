@@ -78,16 +78,38 @@ npm pack --dry-run
 
 This repo includes `.github/workflows/release.yml`.
 
-Recommended release flow:
+### First release bootstrap
+
+Because npm trusted publishing is configured per existing package, the **first publish** of a brand new package must use an `NPM_TOKEN` GitHub secret.
+
+Bootstrap steps for `@codersbrew/pi-tools`:
+
+1. Create an npm access token with publish rights
+2. Add it to the GitHub repo as `NPM_TOKEN`
+3. Confirm `package.json` has the intended version, currently `0.1.0`
+4. Push a version tag such as `v0.1.0`
+5. GitHub Actions will verify the package, publish it, and create a GitHub release
+
+### Switch to trusted publishing after first release
+
+After the package exists on npm, configure npm Trusted Publisher for this repository:
+
+- **Provider:** GitHub Actions
+- **Organization or user:** `codersbrew`
+- **Repository:** `pi-tools`
+- **Workflow filename:** `release.yml`
+- **Environment name:** leave blank unless you later add a GitHub Environment
+
+After trusted publishing is configured, remove the `NPM_TOKEN` secret if you want future releases to publish via GitHub OIDC instead of a token.
+
+### Ongoing release flow
 
 1. Update the package version in `package.json`
-2. Commit the change
-3. Create and push a version tag such as `v0.1.0`
+2. Commit and push the change
+3. Create and push a matching version tag such as `v0.1.1`
 4. GitHub Actions will run verification, publish to npm, and create a GitHub release
 
-Publishing supports either of these setups:
-- **npm trusted publishing** with GitHub Actions OIDC
-- **`NPM_TOKEN` secret** as a fallback
+The workflow uses Node 24 so the npm CLI is new enough for trusted publishing and provenance support.
 
 If you use manual dispatch, ensure the version in `package.json` has not already been published.
 
