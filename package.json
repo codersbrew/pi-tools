@@ -1,7 +1,7 @@
 {
   "name": "@codersbrew/pi-tools",
-  "version": "0.1.1",
-  "description": "A pi package bundling CodersBrew pi extensions.",
+  "version": "0.2.0",
+  "description": "A pi package bundling CodersBrew pi extensions and skills.",
   "type": "module",
   "keywords": [
     "pi-package",
@@ -22,6 +22,7 @@
   },
   "files": [
     "extensions",
+    "skills",
     "README.md",
     "LICENSE"
   ],
@@ -50,6 +51,9 @@
   "pi": {
     "extensions": [
       "./extensions"
+    ],
+    "skills": [
+      "./skills"
     ]
   }
 }
