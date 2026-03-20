@@ -1,6 +1,6 @@
 {
   "name": "@codersbrew/pi-tools",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "A pi package bundling CodersBrew pi extensions and skills.",
   "type": "module",
   "keywords": [
@@ -39,12 +39,19 @@
     "access": "public"
   },
   "peerDependencies": {
+    "@mariozechner/pi-agent-core": "*",
+    "@mariozechner/pi-ai": "*",
     "@mariozechner/pi-coding-agent": "*",
-    "@mariozechner/pi-tui": "*"
+    "@mariozechner/pi-tui": "*",
+    "@sinclair/typebox": "*"
   },
   "devDependencies": {
+    "@mariozechner/jiti": "^2.6.2",
+    "@mariozechner/pi-agent-core": "^0.60.0",
+    "@mariozechner/pi-ai": "^0.60.0",
     "@mariozechner/pi-coding-agent": "^0.60.0",
     "@mariozechner/pi-tui": "^0.60.0",
+    "@sinclair/typebox": "^0.34.48",
     "@types/node": "^24.3.0",
     "typescript": "^5.7.3"
   },
@@ -54,6 +61,9 @@
     ],
     "skills": [
       "./skills"
+    ],
+    "prompts": [
+      "./extensions/subagent/prompts"
     ]
   }
 }

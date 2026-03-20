@@ -1,22 +1,35 @@
 # @codersbrew/pi-tools
 
-A publishable [pi](https://github.com/badlogic/pi-mono) package that bundles CodersBrew's custom pi extensions and skills.
+A publishable [pi](https://github.com/badlogic/pi-mono) package that bundles CodersBrew pi extensions, skills, and prompt templates.
 
 ## Included resources
 
 ### Extensions
 
-### `security`
+#### `security`
 Protects common dangerous tool operations by:
 - warning or blocking risky `bash` commands such as `rm -rf`, `sudo`, and destructive disk operations
 - blocking writes to sensitive paths like `.env`, `.git`, `node_modules`, SSH keys, and common secrets files
 - prompting before lockfile edits such as `package-lock.json`, `yarn.lock`, and `pnpm-lock.yaml`
 
-### `session-breakdown`
+#### `session-breakdown`
 Adds an interactive TUI for analyzing pi session history from `~/.pi/agent/sessions`, including:
 - sessions, messages, tokens, and cost over the last 7 / 30 / 90 days
 - model, cwd, day-of-week, and time-of-day breakdowns
 - contribution-style heatmap visualizations
+
+#### `subagent`
+Delegates work to specialized subagents that run in isolated `pi` subprocesses.
+
+Bundled defaults:
+- built-in agents: `scout`, `planner`, `reviewer`, `worker`
+- packaged prompt templates: `/implement`, `/scout-and-plan`, `/implement-and-review`
+- live streaming of subagent progress, tool calls, usage, and final markdown output
+
+Override behavior:
+- packaged agents act as defaults
+- `~/.pi/agent/agents/*.md` overrides packaged agents of the same name
+- `.pi/agents/*.md` overrides both packaged and user-level agents when `agentScope: "project"` or `"both"`
 
 ### Skill: `github-workflow`
 An opinionated GitHub workflow skill for branch creation, commits, pushes, PR creation, review, and merge work.
@@ -51,12 +64,28 @@ You can also add it manually to pi settings:
 }
 ```
 
+## Using the bundled subagent workflows
+
+After installing the package, the prompt templates are available directly in pi:
+
+```bash
+/implement add Redis caching to the session store
+/scout-and-plan refactor auth to support OAuth
+/implement-and-review add input validation to API endpoints
+```
+
+To customize or add agents, create markdown agent files in either:
+- `~/.pi/agent/agents/` for your personal defaults
+- `.pi/agents/` for project-local agents
+
 ## Package structure
 
-This package uses pi's standard package manifest:
+This package uses pi's standard package manifest and currently publishes:
 - `extensions/security.ts`
 - `extensions/session-breakdown.ts`
+- `extensions/subagent/index.ts`
 - `skills/github-workflow/SKILL.md`
+- `extensions/subagent/prompts/*.md`
 
 The root `package.json` exposes them through:
 
@@ -64,7 +93,8 @@ The root `package.json` exposes them through:
 {
   "pi": {
     "extensions": ["./extensions"],
-    "skills": ["./skills"]
+    "skills": ["./skills"],
+    "prompts": ["./extensions/subagent/prompts"]
   }
 }
 ```
@@ -93,38 +123,16 @@ npm pack --dry-run
 
 This repo includes `.github/workflows/release.yml`.
 
-### First release bootstrap
-
-Because npm trusted publishing is configured per existing package, the **first publish** of a brand new package must use an `NPM_TOKEN` GitHub secret.
-
-Bootstrap steps for `@codersbrew/pi-tools`:
-
-1. Create an npm access token with publish rights
-2. Add it to the GitHub repo as `NPM_TOKEN`
-3. Confirm `package.json` has the intended version
-4. Push a matching version tag such as `v0.2.0`
-5. GitHub Actions will verify the package, publish it, and create a GitHub release
-
-### Switch to trusted publishing after first release
-
-After the package exists on npm, configure npm Trusted Publisher for this repository:
-
-- **Provider:** GitHub Actions
-- **Organization or user:** `codersbrew`
-- **Repository:** `pi-tools`
-- **Workflow filename:** `release.yml`
-- **Environment name:** leave blank unless you later add a GitHub Environment
-
-After trusted publishing is configured, remove the `NPM_TOKEN` secret if you want future releases to publish via GitHub OIDC instead of a token.
-
-### Ongoing release flow
+Ongoing release flow:
 
 1. Update the package version in `package.json`
 2. Commit and push the change
-3. Create and push a matching version tag such as `v0.2.0`
+3. Create and push a matching version tag such as `v0.3.0`
 4. GitHub Actions will run verification, publish to npm, and create a GitHub release
 
-The workflow uses Node 24 so the npm CLI is new enough for trusted publishing and provenance support.
+The workflow supports either:
+- npm trusted publishing via GitHub OIDC
+- `NPM_TOKEN` fallback publishing when the secret is present
 
 If you use manual dispatch, ensure the version in `package.json` has not already been published.
 
