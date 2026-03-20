@@ -79,8 +79,10 @@ Agents are markdown files with YAML frontmatter:
 name: my-agent
 description: What this agent does
 tools: read, grep, find, ls
-model: claude-haiku-4-5
+model: gpt-5.4-mini, gpt-5-mini, claude-sonnet-4-6, gemini-3-flash
 ---
 
 System prompt for the agent goes here.
 ```
+
+`model` can be either a single model id or a comma-separated preference list. The subagent uses the first available model from the list.

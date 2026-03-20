@@ -28,6 +28,14 @@ const MAX_PARALLEL_TASKS = 8;
 const MAX_CONCURRENCY = 4;
 const COLLAPSED_ITEM_COUNT = 10;
 
+const ICONS = {
+	success: "●",
+	error: "✕",
+	running: "◔",
+	partial: "◐",
+	toolCall: "›",
+} as const;
+
 function formatTokens(count: number): string {
 	if (count < 1000) return count.toString();
 	if (count < 10000) return `${(count / 1000).toFixed(1)}k`;
@@ -232,9 +240,23 @@ function getPiInvocation(args: string[]): { command: string; args: string[] } {
 
 type OnUpdateCallback = (partial: AgentToolResult<SubagentDetails>) => void;
 
+function resolvePreferredModel(modelPreference: string | undefined, availableModelIds: Set<string>): string | undefined {
+	if (!modelPreference) return undefined;
+	const candidates = modelPreference
+		.split(",")
+		.map((model) => model.trim())
+		.filter(Boolean);
+	if (candidates.length === 0) return undefined;
+	for (const candidate of candidates) {
+		if (availableModelIds.has(candidate.toLowerCase())) return candidate;
+	}
+	return candidates[0];
+}
+
 async function runSingleAgent(
 	defaultCwd: string,
 	agents: AgentConfig[],
+	availableModelIds: Set<string>,
 	agentName: string,
 	task: string,
 	cwd: string | undefined,
@@ -259,8 +281,10 @@ async function runSingleAgent(
 		};
 	}
 
+	const resolvedModel = resolvePreferredModel(agent.model, availableModelIds);
+
 	const args: string[] = ["--mode", "json", "-p", "--no-session"];
-	if (agent.model) args.push("--model", agent.model);
+	if (resolvedModel) args.push("--model", resolvedModel);
 	if (agent.tools && agent.tools.length > 0) args.push("--tools", agent.tools.join(","));
 
 	let tmpPromptDir: string | null = null;
@@ -274,7 +298,7 @@ async function runSingleAgent(
 		messages: [],
 		stderr: "",
 		usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, contextTokens: 0, turns: 0 },
-		model: agent.model,
+		model: resolvedModel,
 		step,
 	};
 
@@ -441,6 +465,7 @@ export default function (pi: ExtensionAPI) {
 			const agentScope: AgentScope = params.agentScope ?? "user";
 			const discovery = discoverAgents(ctx.cwd, agentScope);
 			const agents = discovery.agents;
+			const availableModelIds = new Set(ctx.modelRegistry.getAvailable().map((model) => model.id.toLowerCase()));
 			const confirmProjectAgents = params.confirmProjectAgents ?? true;
 
 			const hasChain = (params.chain?.length ?? 0) > 0;
@@ -521,6 +546,7 @@ export default function (pi: ExtensionAPI) {
 					const result = await runSingleAgent(
 						ctx.cwd,
 						agents,
+						availableModelIds,
 						step.agent,
 						taskWithContext,
 						step.cwd,
@@ -595,6 +621,7 @@ export default function (pi: ExtensionAPI) {
 					const result = await runSingleAgent(
 						ctx.cwd,
 						agents,
+						availableModelIds,
 						t.agent,
 						t.task,
 						t.cwd,
@@ -635,6 +662,7 @@ export default function (pi: ExtensionAPI) {
 				const result = await runSingleAgent(
 					ctx.cwd,
 					agents,
+					availableModelIds,
 					params.agent,
 					params.task,
 					params.cwd,
@@ -729,7 +757,7 @@ export default function (pi: ExtensionAPI) {
 						const preview = expanded ? item.text : item.text.split("\n").slice(0, 3).join("\n");
 						text += `${theme.fg("toolOutput", preview)}\n`;
 					} else {
-						text += `${theme.fg("muted", "→ ") + formatToolCall(item.name, item.args, theme.fg.bind(theme))}\n`;
+						text += `${theme.fg("muted", `${ICONS.toolCall} `) + formatToolCall(item.name, item.args, theme.fg.bind(theme))}\n`;
 					}
 				}
 				return text.trimEnd();
@@ -738,7 +766,7 @@ export default function (pi: ExtensionAPI) {
 			if (details.mode === "single" && details.results.length === 1) {
 				const r = details.results[0];
 				const isError = r.exitCode !== 0 || r.stopReason === "error" || r.stopReason === "aborted";
-				const icon = isError ? theme.fg("error", "✗") : theme.fg("success", "✓");
+				const icon = isError ? theme.fg("error", ICONS.error) : theme.fg("success", ICONS.success);
 				const displayItems = getDisplayItems(r.messages);
 				const finalOutput = getFinalOutput(r.messages);
 
@@ -761,7 +789,7 @@ export default function (pi: ExtensionAPI) {
 							if (item.type === "toolCall")
 								container.addChild(
 									new Text(
-										theme.fg("muted", "→ ") + formatToolCall(item.name, item.args, theme.fg.bind(theme)),
+										theme.fg("muted", `${ICONS.toolCall} `) + formatToolCall(item.name, item.args, theme.fg.bind(theme)),
 										0,
 										0,
 									),
@@ -808,7 +836,7 @@ export default function (pi: ExtensionAPI) {
 
 			if (details.mode === "chain") {
 				const successCount = details.results.filter((r) => r.exitCode === 0).length;
-				const icon = successCount === details.results.length ? theme.fg("success", "✓") : theme.fg("error", "✗");
+				const icon = successCount === details.results.length ? theme.fg("success", ICONS.success) : theme.fg("error", ICONS.error);
 
 				if (expanded) {
 					const container = new Container();
@@ -824,7 +852,7 @@ export default function (pi: ExtensionAPI) {
 					);
 
 					for (const r of details.results) {
-						const rIcon = r.exitCode === 0 ? theme.fg("success", "✓") : theme.fg("error", "✗");
+						const rIcon = r.exitCode === 0 ? theme.fg("success", ICONS.success) : theme.fg("error", ICONS.error);
 						const displayItems = getDisplayItems(r.messages);
 						const finalOutput = getFinalOutput(r.messages);
 
@@ -843,7 +871,7 @@ export default function (pi: ExtensionAPI) {
 							if (item.type === "toolCall") {
 								container.addChild(
 									new Text(
-										theme.fg("muted", "→ ") + formatToolCall(item.name, item.args, theme.fg.bind(theme)),
+										theme.fg("muted", `${ICONS.toolCall} `) + formatToolCall(item.name, item.args, theme.fg.bind(theme)),
 										0,
 										0,
 									),
@@ -876,7 +904,7 @@ export default function (pi: ExtensionAPI) {
 					theme.fg("toolTitle", theme.bold("chain ")) +
 					theme.fg("accent", `${successCount}/${details.results.length} steps`);
 				for (const r of details.results) {
-					const rIcon = r.exitCode === 0 ? theme.fg("success", "✓") : theme.fg("error", "✗");
+					const rIcon = r.exitCode === 0 ? theme.fg("success", ICONS.success) : theme.fg("error", ICONS.error);
 					const displayItems = getDisplayItems(r.messages);
 					text += `\n\n${theme.fg("muted", `─── Step ${r.step}: `)}${theme.fg("accent", r.agent)} ${rIcon}`;
 					if (displayItems.length === 0) text += `\n${theme.fg("muted", "(no output)")}`;
@@ -894,10 +922,10 @@ export default function (pi: ExtensionAPI) {
 				const failCount = details.results.filter((r) => r.exitCode > 0).length;
 				const isRunning = running > 0;
 				const icon = isRunning
-					? theme.fg("warning", "⏳")
+					? theme.fg("warning", ICONS.running)
 					: failCount > 0
-						? theme.fg("warning", "◐")
-						: theme.fg("success", "✓");
+						? theme.fg("warning", ICONS.partial)
+						: theme.fg("success", ICONS.success);
 				const status = isRunning
 					? `${successCount + failCount}/${details.results.length} done, ${running} running`
 					: `${successCount}/${details.results.length} tasks`;
@@ -913,7 +941,7 @@ export default function (pi: ExtensionAPI) {
 					);
 
 					for (const r of details.results) {
-						const rIcon = r.exitCode === 0 ? theme.fg("success", "✓") : theme.fg("error", "✗");
+						const rIcon = r.exitCode === 0 ? theme.fg("success", ICONS.success) : theme.fg("error", ICONS.error);
 						const displayItems = getDisplayItems(r.messages);
 						const finalOutput = getFinalOutput(r.messages);
 
@@ -928,7 +956,7 @@ export default function (pi: ExtensionAPI) {
 							if (item.type === "toolCall") {
 								container.addChild(
 									new Text(
-										theme.fg("muted", "→ ") + formatToolCall(item.name, item.args, theme.fg.bind(theme)),
+										theme.fg("muted", `${ICONS.toolCall} `) + formatToolCall(item.name, item.args, theme.fg.bind(theme)),
 										0,
 										0,
 									),
@@ -959,10 +987,10 @@ export default function (pi: ExtensionAPI) {
 				for (const r of details.results) {
 					const rIcon =
 						r.exitCode === -1
-							? theme.fg("warning", "⏳")
+							? theme.fg("warning", ICONS.running)
 							: r.exitCode === 0
-								? theme.fg("success", "✓")
-								: theme.fg("error", "✗");
+								? theme.fg("success", ICONS.success)
+								: theme.fg("error", ICONS.error);
 					const displayItems = getDisplayItems(r.messages);
 					text += `\n\n${theme.fg("muted", "─── ")}${theme.fg("accent", r.agent)} ${rIcon}`;
 					if (displayItems.length === 0)
