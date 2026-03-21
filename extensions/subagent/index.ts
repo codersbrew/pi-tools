@@ -240,23 +240,53 @@ function getPiInvocation(args: string[]): { command: string; args: string[] } {
 
 type OnUpdateCallback = (partial: AgentToolResult<SubagentDetails>) => void;
 
-function resolvePreferredModel(modelPreference: string | undefined, availableModelIds: Set<string>): string | undefined {
+type AvailableModelLike = {
+	id: string;
+	provider: string;
+};
+
+export function resolvePreferredModel(
+	modelPreference: string | undefined,
+	availableModels: AvailableModelLike[],
+	currentProvider?: string,
+): string | undefined {
 	if (!modelPreference) return undefined;
 	const candidates = modelPreference
 		.split(",")
 		.map((model) => model.trim())
 		.filter(Boolean);
 	if (candidates.length === 0) return undefined;
+
+	const normalizedCurrentProvider = currentProvider?.toLowerCase();
+
 	for (const candidate of candidates) {
-		if (availableModelIds.has(candidate.toLowerCase())) return candidate;
+		const slashIndex = candidate.indexOf("/");
+		if (slashIndex !== -1) {
+			const provider = candidate.slice(0, slashIndex).trim();
+			const modelId = candidate.slice(slashIndex + 1).trim();
+			const match = availableModels.find(
+				(model) =>
+					model.provider.toLowerCase() === provider.toLowerCase() && model.id.toLowerCase() === modelId.toLowerCase(),
+			);
+			if (match) return `${match.provider}/${match.id}`;
+			continue;
+		}
+
+		const matches = availableModels.filter((model) => model.id.toLowerCase() === candidate.toLowerCase());
+		if (matches.length === 0) continue;
+		const preferredMatch =
+			matches.find((model) => model.provider.toLowerCase() === normalizedCurrentProvider) ?? matches[0];
+		return `${preferredMatch.provider}/${preferredMatch.id}`;
 	}
+
 	return candidates[0];
 }
 
 async function runSingleAgent(
 	defaultCwd: string,
 	agents: AgentConfig[],
-	availableModelIds: Set<string>,
+	availableModels: AvailableModelLike[],
+	currentProvider: string | undefined,
 	agentName: string,
 	task: string,
 	cwd: string | undefined,
@@ -281,7 +311,7 @@ async function runSingleAgent(
 		};
 	}
 
-	const resolvedModel = resolvePreferredModel(agent.model, availableModelIds);
+	const resolvedModel = resolvePreferredModel(agent.model, availableModels, currentProvider);
 
 	const args: string[] = ["--mode", "json", "-p", "--no-session"];
 	if (resolvedModel) args.push("--model", resolvedModel);
@@ -465,7 +495,11 @@ export default function (pi: ExtensionAPI) {
 			const agentScope: AgentScope = params.agentScope ?? "user";
 			const discovery = discoverAgents(ctx.cwd, agentScope);
 			const agents = discovery.agents;
-			const availableModelIds = new Set(ctx.modelRegistry.getAvailable().map((model) => model.id.toLowerCase()));
+			const availableModels = ctx.modelRegistry.getAvailable().map((model) => ({
+				id: model.id,
+				provider: model.provider,
+			}));
+			const currentProvider = ctx.model?.provider;
 			const confirmProjectAgents = params.confirmProjectAgents ?? true;
 
 			const hasChain = (params.chain?.length ?? 0) > 0;
@@ -546,7 +580,8 @@ export default function (pi: ExtensionAPI) {
 					const result = await runSingleAgent(
 						ctx.cwd,
 						agents,
-						availableModelIds,
+						availableModels,
+						currentProvider,
 						step.agent,
 						taskWithContext,
 						step.cwd,
@@ -621,7 +656,8 @@ export default function (pi: ExtensionAPI) {
 					const result = await runSingleAgent(
 						ctx.cwd,
 						agents,
-						availableModelIds,
+						availableModels,
+						currentProvider,
 						t.agent,
 						t.task,
 						t.cwd,
@@ -662,7 +698,8 @@ export default function (pi: ExtensionAPI) {
 				const result = await runSingleAgent(
 					ctx.cwd,
 					agents,
-					availableModelIds,
+					availableModels,
+					currentProvider,
 					params.agent,
 					params.task,
 					params.cwd,

@@ -48,6 +48,35 @@ test("subagent loads through pi's extension loader aliases", async () => {
 	assert.equal(typeof factory, "function");
 });
 
+test("resolvePreferredModel qualifies ambiguous bare model ids using the current provider", async () => {
+	const jiti = createPiStyleJiti();
+	const { resolvePreferredModel } = await jiti.import(subagentIndexPath);
+
+	const resolved = resolvePreferredModel(
+		"gpt-5.4, google/gemini-3.1-pro-preview",
+		[
+			{ id: "gpt-5.4", provider: "openai-codex" },
+			{ id: "gpt-5.4", provider: "azure-openai-responses" },
+			{ id: "gemini-3.1-pro-preview", provider: "google" },
+		],
+		"openai-codex",
+	);
+
+	assert.equal(resolved, "openai-codex/gpt-5.4");
+});
+
+test("resolvePreferredModel skips unavailable provider-qualified candidates and uses later matches", async () => {
+	const jiti = createPiStyleJiti();
+	const { resolvePreferredModel } = await jiti.import(subagentIndexPath);
+
+	const resolved = resolvePreferredModel(
+		"openai-codex/gpt-5.4, google/gemini-3.1-pro-preview",
+		[{ id: "gemini-3.1-pro-preview", provider: "google" }],
+	);
+
+	assert.equal(resolved, "google/gemini-3.1-pro-preview");
+});
+
 test("bundled subagent agents act as defaults and can be overridden", async () => {
 	const jiti = createPiStyleJiti();
 	const { discoverAgents } = await jiti.import(path.join(projectRoot, "extensions/subagent/agents.ts"));
