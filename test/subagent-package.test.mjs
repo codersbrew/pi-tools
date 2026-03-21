@@ -77,6 +77,55 @@ test("resolvePreferredModel skips unavailable provider-qualified candidates and 
 	assert.equal(resolved, "google/gemini-3.1-pro-preview");
 });
 
+test("resolvePreferredModel returns undefined when no preferred models are available", async () => {
+	const jiti = createPiStyleJiti();
+	const { resolvePreferredModel } = await jiti.import(subagentIndexPath);
+
+	const resolved = resolvePreferredModel("gpt-5.4, google/gemini-3.1-pro-preview", []);
+
+	assert.equal(resolved, undefined);
+});
+
+test("discoverAgents skips malformed files and invalidates cached directory reads when files change", async () => {
+	const jiti = createPiStyleJiti();
+	const { discoverAgents } = await jiti.import(path.join(projectRoot, "extensions/subagent/agents.ts"));
+
+	const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-tools-subagent-cache-"));
+	const agentDir = path.join(tmpDir, "agent-home");
+	const userAgentsDir = path.join(agentDir, "agents");
+	fs.mkdirSync(userAgentsDir, { recursive: true });
+
+	const previousAgentDir = process.env.PI_CODING_AGENT_DIR;
+	process.env.PI_CODING_AGENT_DIR = agentDir;
+
+	try {
+		fs.writeFileSync(
+			path.join(userAgentsDir, "broken.md"),
+			"---\nname: broken\ndescription: Broken\nmodel: [\n---\n\nThis file is intentionally malformed.",
+		);
+		fs.writeFileSync(
+			path.join(userAgentsDir, "custom.md"),
+			"---\nname: custom\ndescription: Alpha\n---\n\nOne.",
+		);
+
+		const first = discoverAgents(tmpDir, "user");
+		assert.equal(first.agents.find((agent) => agent.name === "custom")?.description, "Alpha");
+		assert.equal(first.agents.find((agent) => agent.name === "broken"), undefined);
+
+		const customAgentPath = path.join(userAgentsDir, "custom.md");
+		fs.writeFileSync(customAgentPath, "---\nname: custom\ndescription: Omega\n---\n\nTwo.");
+		const bumpedTime = new Date(Date.now() + 2000);
+		fs.utimesSync(customAgentPath, bumpedTime, bumpedTime);
+
+		const second = discoverAgents(tmpDir, "user");
+		assert.equal(second.agents.find((agent) => agent.name === "custom")?.description, "Omega");
+	} finally {
+		if (previousAgentDir === undefined) delete process.env.PI_CODING_AGENT_DIR;
+		else process.env.PI_CODING_AGENT_DIR = previousAgentDir;
+		fs.rmSync(tmpDir, { recursive: true, force: true });
+	}
+});
+
 test("bundled subagent agents act as defaults and can be overridden", async () => {
 	const jiti = createPiStyleJiti();
 	const { discoverAgents } = await jiti.import(path.join(projectRoot, "extensions/subagent/agents.ts"));
