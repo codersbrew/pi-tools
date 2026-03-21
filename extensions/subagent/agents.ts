@@ -25,20 +25,56 @@ export interface AgentDiscoveryResult {
 	projectAgentsDir: string | null;
 }
 
+type CachedAgentsEntry = {
+	fingerprint: string;
+	agents: AgentConfig[];
+};
+
+const agentsDirCache = new Map<string, CachedAgentsEntry>();
+
+function getCacheKey(dir: string, source: AgentSource): string {
+	return `${source}:${dir}`;
+}
+
+function getDirectoryFingerprint(dir: string, entries: fs.Dirent[]): string {
+	const fingerprints: string[] = [];
+	for (const entry of entries
+		.filter((entry) => entry.name.endsWith(".md") && (entry.isFile() || entry.isSymbolicLink()))
+		.sort((a, b) => a.name.localeCompare(b.name))) {
+		const filePath = path.join(dir, entry.name);
+		try {
+			const stat = fs.statSync(filePath);
+			fingerprints.push(`${entry.name}:${stat.size}:${stat.mtimeMs}`);
+		} catch {
+			fingerprints.push(`${entry.name}:unreadable`);
+		}
+	}
+	return fingerprints.join("|");
+}
+
 function loadAgentsFromDir(dir: string, source: AgentSource): AgentConfig[] {
-	const agents: AgentConfig[] = [];
+	const cacheKey = getCacheKey(dir, source);
 
 	if (!fs.existsSync(dir)) {
-		return agents;
+		agentsDirCache.delete(cacheKey);
+		return [];
 	}
 
 	let entries: fs.Dirent[];
 	try {
 		entries = fs.readdirSync(dir, { withFileTypes: true });
 	} catch {
-		return agents;
+		agentsDirCache.delete(cacheKey);
+		return [];
 	}
 
+	const fingerprint = getDirectoryFingerprint(dir, entries);
+	const cached = agentsDirCache.get(cacheKey);
+	if (cached && cached.fingerprint === fingerprint) {
+		return cached.agents;
+	}
+
+	const agents: AgentConfig[] = [];
 	for (const entry of entries) {
 		if (!entry.name.endsWith(".md")) continue;
 		if (!entry.isFile() && !entry.isSymbolicLink()) continue;
@@ -51,7 +87,13 @@ function loadAgentsFromDir(dir: string, source: AgentSource): AgentConfig[] {
 			continue;
 		}
 
-		const { frontmatter, body } = parseFrontmatter<Record<string, string>>(content);
+		let frontmatter: Record<string, string>;
+		let body: string;
+		try {
+			({ frontmatter, body } = parseFrontmatter<Record<string, string>>(content));
+		} catch {
+			continue;
+		}
 
 		if (!frontmatter.name || !frontmatter.description) {
 			continue;
@@ -73,6 +115,7 @@ function loadAgentsFromDir(dir: string, source: AgentSource): AgentConfig[] {
 		});
 	}
 
+	agentsDirCache.set(cacheKey, { fingerprint, agents });
 	return agents;
 }
 
