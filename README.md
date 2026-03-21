@@ -18,6 +18,9 @@ Adds an interactive TUI for analyzing pi session history from `~/.pi/agent/sessi
 - model, cwd, day-of-week, and time-of-day breakdowns
 - contribution-style heatmap visualizations
 
+#### `update-pi`
+Adds a `/update-pi` slash command that upgrades `@mariozechner/pi-coding-agent` using your detected package manager (or configured `npmCommand`) and reminds you to restart pi afterward.
+
 #### `subagent`
 Delegates work to specialized subagents that run in isolated `pi` subprocesses.
 
@@ -83,6 +86,7 @@ To customize or add agents, create markdown agent files in either:
 This package uses pi's standard package manifest and currently publishes:
 - `extensions/security.ts`
 - `extensions/session-breakdown.ts`
+- `extensions/update-pi.ts`
 - `extensions/subagent/index.ts`
 - `skills/github-workflow/SKILL.md`
 - `extensions/subagent/prompts/*.md`
