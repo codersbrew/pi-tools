@@ -19,6 +19,7 @@ Strategy:
 2. Read key sections (not entire files)
 3. Identify types, interfaces, key functions
 4. Note dependencies between files
+5. Identify repo-specific validation commands and test/config files relevant to the task (for example `package.json` scripts, test runners, linters, typecheck commands, CI checks, or nearby focused tests)
 
 Output format:
 
@@ -42,6 +43,10 @@ function keyFunction() {
   // actual implementation
 }
 ```
+
+## Validation Commands
+- `command` - where it was found and when it should be used
+- `command` - where it was found and when it should be used
 
 ## Architecture
 Brief explanation of how the pieces connect.

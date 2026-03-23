@@ -137,7 +137,8 @@ function formatToolCall(
 	}
 }
 
-const MAX_CHAIN_PREVIOUS_OUTPUT_CHARS = 20_000;
+const MAX_CHAIN_PREVIOUS_OUTPUT_CHARS = 60_000;
+const MAX_CHAIN_PREVIOUS_OUTPUT_PREVIEW_CHARS = 8_000;
 const RUNNING_EXIT_CODE = -1;
 const OUTPUT_PREVIEW_CHARS = 100;
 
@@ -202,12 +203,40 @@ function getFinalOutputFromMessage(message: Message): string {
 		.trim();
 }
 
-function clampPreviousOutput(text: string, maxChars = MAX_CHAIN_PREVIOUS_OUTPUT_CHARS): string {
+function clampPreviousOutput(text: string, maxChars = MAX_CHAIN_PREVIOUS_OUTPUT_PREVIEW_CHARS): string {
 	if (text.length <= maxChars) return text;
-	const head = Math.ceil(maxChars / 2);
-	const tail = Math.floor(maxChars / 2);
-	const omitted = text.length - head - tail;
-	return `${text.slice(0, head)}\n\n...[truncated ${omitted} chars before passing to next chain step]...\n\n${text.slice(text.length - tail)}`;
+	const omitted = text.length - maxChars;
+	return `${text.slice(0, maxChars)}\n\n...[truncated ${omitted} chars from the end for preview]...`;
+}
+
+async function injectPreviousOutput(
+	task: string,
+	previousOutput: string,
+): Promise<{ task: string; cleanup?: () => Promise<void> }> {
+	if (!task.includes("{previous}")) return { task };
+	if (!previousOutput) return { task: task.replace(/\{previous\}/g, "(no previous output)") };
+	if (previousOutput.length <= MAX_CHAIN_PREVIOUS_OUTPUT_CHARS) {
+		return { task: task.replace(/\{previous\}/g, previousOutput) };
+	}
+
+	const tmpDir = await createTempAgentRunDir("chain-context");
+	const previousOutputPath = await writeTempTextFile(tmpDir, "previous-output.md", previousOutput);
+	const preview = clampPreviousOutput(previousOutput);
+	const replacement = [
+		"The full previous step output was too large to inline.",
+		`Read it from: \`${previousOutputPath}\``,
+		"Use the read tool to inspect that file before continuing.",
+		"",
+		"Preview:",
+		preview,
+	].join("\n");
+
+	return {
+		task: task.replace(/\{previous\}/g, replacement),
+		cleanup: async () => {
+			await fs.promises.rm(tmpDir, { recursive: true, force: true });
+		},
+	};
 }
 
 function getOutputPreview(text: string, maxChars = OUTPUT_PREVIEW_CHARS): string {
@@ -662,7 +691,7 @@ export default function (pi: ExtensionAPI) {
 
 				for (let i = 0; i < params.chain.length; i++) {
 					const step = params.chain[i];
-					const taskWithContext = step.task.replace(/\{previous\}/g, clampPreviousOutput(previousOutput));
+					const { task: taskWithContext, cleanup } = await injectPreviousOutput(step.task, previousOutput);
 
 					// Create update callback that includes all previous results
 					const chainUpdate: OnUpdateCallback | undefined = onUpdate
@@ -679,32 +708,36 @@ export default function (pi: ExtensionAPI) {
 							}
 						: undefined;
 
-					const result = await runSingleAgent(
-						ctx.cwd,
-						agents,
-						agentByName,
-						availableModels,
-						currentProvider,
-						step.agent,
-						taskWithContext,
-						step.cwd,
-						i + 1,
-						signal,
-						chainUpdate,
-						makeDetails("chain"),
-					);
-					results.push(result);
+					try {
+						const result = await runSingleAgent(
+							ctx.cwd,
+							agents,
+							agentByName,
+							availableModels,
+							currentProvider,
+							step.agent,
+							taskWithContext,
+							step.cwd,
+							i + 1,
+							signal,
+							chainUpdate,
+							makeDetails("chain"),
+						);
+						results.push(result);
 
-					const isError = isErrorResult(result);
-					if (isError) {
-						const errorMsg = result.errorMessage || result.stderr || result.finalOutput || "(no output)";
-						return {
-							content: [{ type: "text", text: `Chain stopped at step ${i + 1} (${step.agent}): ${errorMsg}` }],
-							details: makeDetails("chain")(results),
-							isError: true,
-						};
+						const isError = isErrorResult(result);
+						if (isError) {
+							const errorMsg = result.errorMessage || result.stderr || result.finalOutput || "(no output)";
+							return {
+								content: [{ type: "text", text: `Chain stopped at step ${i + 1} (${step.agent}): ${errorMsg}` }],
+								details: makeDetails("chain")(results),
+								isError: true,
+							};
+						}
+						previousOutput = result.finalOutput;
+					} finally {
+						if (cleanup) await cleanup();
 					}
-					previousOutput = result.finalOutput;
 				}
 				return {
 					content: [{ type: "text", text: results[results.length - 1].finalOutput || "(no output)" }],
