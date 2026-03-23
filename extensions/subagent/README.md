@@ -77,7 +77,7 @@ Use a chain: first have scout find the read tool, then have planner suggest impr
 /implement-and-review add input validation to API endpoints
 ```
 
-Tracked plans are written to `plan/*.md` and use a shared status legend (`[ ]`, `[-]`, `[x]`, `[!]`) so coordinators can safely resume work, batch independent tasks into parallel worker runs, and record validation before checking tasks off.
+Tracked plans are written to `plan/*.md` and use a shared status legend (`[ ]`, `[-]`, `[x]`, `[!]`) so coordinators can safely resume work, batch independent tasks into parallel worker runs, and record validation before checking tasks off. New-plan workflows also tell the materializing worker to create or reuse a focused git branch before writing the plan when the checkout is clean enough to do so safely.
 
 ## Agent definitions
 

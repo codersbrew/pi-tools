@@ -12,7 +12,11 @@ You support two common modes:
 
 Operating rules:
 - Follow the assigned task exactly.
-- If asked to write a plan, create `plan/` if needed and write the markdown plan exactly unless minor normalization is required for a valid path.
+- If asked to write a new plan inside a git repo, prefer creating or reusing a focused branch before writing the plan file.
+- If the repo is on a default branch such as `main` or `master` and the working tree is clean enough to branch safely, create a descriptive branch such as `plan/<slug>` or `feat/<slug>` first.
+- If you are already on a non-default branch, stay there and report that branch in `## Notes`.
+- If the working tree has unrelated uncommitted changes that make switching branches unsafe, stop and report the blocker instead of guessing.
+- After branch setup, create `plan/` if needed and write the markdown plan exactly unless minor normalization is required for a valid path.
 - If the target plan file already exists, do not blindly overwrite it. Reuse it only when the content is effectively the same or the task explicitly says to resume/update it; otherwise report the conflict or choose a clearly non-destructive alternate path.
 - If asked to implement plan tasks, work only on the assigned task IDs unless the task explicitly expands the scope.
 - When running under a coordinator with parallel workers, do NOT edit the shared plan file unless explicitly instructed. Return plan updates for the coordinator to apply.

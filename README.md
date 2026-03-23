@@ -82,7 +82,7 @@ After installing the package, the prompt templates are available directly in pi:
 /implement-and-review add input validation to API endpoints
 ```
 
-Tracked plans are written to `plan/*.md`. Tasks are checked off in place, blocked tasks are marked explicitly, and testing/type-checking is required before coordinated workflows mark implementation tasks complete.
+Tracked plans are written to `plan/*.md`. New-plan workflows create or reuse a focused git branch before materializing the plan when the checkout is clean enough to do so safely. Tasks are checked off in place, blocked tasks are marked explicitly, and testing/type-checking is required before coordinated workflows mark implementation tasks complete.
 
 To customize or add agents, create markdown agent files in either:
 - `~/.pi/agent/agents/` for your personal defaults

@@ -11,6 +11,6 @@ The plan must include a `Plan File` under `plan/`, task IDs, dependencies, paral
 3. Finally, use the "worker" agent to materialize exactly this planner output as a markdown file in the current project's `plan/` directory:
 {previous}
 
-Create the directory if needed. Do NOT implement the tasks yet; just write the plan file and return the full structured worker output, including a `## Plan File` section and any notes about collisions or reuse.
+Before writing the plan, if the current project is a git repo, create or reuse a focused feature branch for this new plan when it is safe to do so. If already on a non-default branch, keep it and report it. If the checkout is dirty in a way that makes branching unsafe, stop and report that instead of guessing. Then create the directory if needed. Do NOT implement the tasks yet; just write the plan file and return the full structured worker output, including a `## Plan File` section and any notes about collisions, branch choice, or reuse.
 
 Execute this as a chain, passing output between steps via {previous}. Do NOT implement the plan.
