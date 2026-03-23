@@ -25,8 +25,10 @@ Adds a `/update-pi` slash command that upgrades `@mariozechner/pi-coding-agent` 
 Delegates work to specialized subagents that run in isolated `pi` subprocesses.
 
 Bundled defaults:
-- built-in agents: `scout`, `planner`, `reviewer`, `worker`
-- packaged prompt templates: `/implement`, `/scout-and-plan`, `/implement-and-review`
+- built-in agents: `scout`, `planner`, `reviewer`, `worker`, `coordinator`
+- packaged prompt templates: `/plan`, `/execute-plan`, `/continue-plan`, `/implement`, `/scout-and-plan`, `/implement-and-review`
+- tracked markdown plans written to `plan/*.md` with task IDs, status checkboxes, dependency metadata, and validation steps
+- coordinators can fan out safe parallel worker batches and update shared plan files as work completes
 - live streaming of subagent progress, tool calls, usage, and final markdown output
 
 Override behavior:
@@ -72,10 +74,15 @@ You can also add it manually to pi settings:
 After installing the package, the prompt templates are available directly in pi:
 
 ```bash
+/plan add Redis caching to the session store
+/execute-plan plan/add-redis-caching.md
+/continue-plan plan/add-redis-caching.md
 /implement add Redis caching to the session store
 /scout-and-plan refactor auth to support OAuth
 /implement-and-review add input validation to API endpoints
 ```
+
+Tracked plans are written to `plan/*.md`. Tasks are checked off in place, blocked tasks are marked explicitly, and testing/type-checking is required before coordinated workflows mark implementation tasks complete.
 
 To customize or add agents, create markdown agent files in either:
 - `~/.pi/agent/agents/` for your personal defaults

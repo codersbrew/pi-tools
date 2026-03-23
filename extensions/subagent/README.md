@@ -18,8 +18,12 @@ The package ships these default agents:
 - `planner`
 - `reviewer`
 - `worker`
+- `coordinator`
 
 And these prompt templates:
+- `/plan`
+- `/execute-plan`
+- `/continue-plan`
 - `/implement`
 - `/scout-and-plan`
 - `/implement-and-review`
@@ -65,10 +69,15 @@ Use a chain: first have scout find the read tool, then have planner suggest impr
 ### Prompt templates
 
 ```text
+/plan add Redis caching to the session store
+/execute-plan plan/add-redis-caching.md
+/continue-plan plan/add-redis-caching.md
 /implement add Redis caching to the session store
 /scout-and-plan refactor auth to support OAuth
 /implement-and-review add input validation to API endpoints
 ```
+
+Tracked plans are written to `plan/*.md` and use a shared status legend (`[ ]`, `[-]`, `[x]`, `[!]`) so coordinators can safely resume work, batch independent tasks into parallel worker runs, and record validation before checking tasks off.
 
 ## Agent definitions
 
@@ -86,3 +95,5 @@ System prompt for the agent goes here.
 ```
 
 `model` can be either a single model id or a comma-separated preference list. The subagent uses the first available model from the list.
+
+The bundled planner emits tracked markdown plans, workers can materialize or execute assigned plan tasks, and the coordinator agent can orchestrate safe parallel worker batches while updating the shared plan file.

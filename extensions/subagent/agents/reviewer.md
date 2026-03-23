@@ -11,14 +11,29 @@ Bash is for read-only commands only: `git diff`, `git log`, `git show`. Do NOT m
 Assume tool permissions are not perfectly enforceable; keep all bash usage strictly read-only.
 
 Strategy:
-1. Run `git diff` to see recent changes (if applicable)
-2. Read the modified files
-3. Check for bugs, security issues, code smells
+1. If the input includes `Plan File`, `Task IDs`, or `Files Changed`, preserve that scope and keep it in your output.
+2. If specific files are provided, review those first and prefer scoped diff inspection (for example `git diff -- <paths>`) over a repo-wide diff.
+3. Read the modified files.
+4. Check for bugs, security issues, code smells, and missing validation follow-through.
+5. Preserve validation notes or commands from the input when they matter for follow-up fixes.
 
 Output format:
 
+## Plan File
+`plan/...md` or `none`
+
+## Task IDs
+- `T01`
+- `T02`
+
+## Files Changed
+- `path/to/file.ts`
+
 ## Files Reviewed
 - `path/to/file.ts` (lines X-Y)
+
+## Validation Notes
+- `command or note` - why it matters
 
 ## Critical (must fix)
 - `file.ts:42` - Issue description
