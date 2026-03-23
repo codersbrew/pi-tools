@@ -81,6 +81,22 @@ test("tracked-plan chain prompts explicitly pass prior outputs between planning,
 	assert.match(implementAndReviewPrompt, /apply the review feedback described in this review output:\n\{previous\}/);
 });
 
+test("new-plan workflows document safe branch creation before plan materialization", () => {
+	const workerAgent = readProjectFile("extensions/subagent/agents/worker.md");
+	const planPrompt = readProjectFile("extensions/subagent/prompts/plan.md");
+	const scoutAndPlanPrompt = readProjectFile("extensions/subagent/prompts/scout-and-plan.md");
+	const implementPrompt = readProjectFile("extensions/subagent/prompts/implement.md");
+	const implementAndReviewPrompt = readProjectFile("extensions/subagent/prompts/implement-and-review.md");
+
+	assert.match(workerAgent, /If asked to write a new plan inside a git repo, prefer creating or reusing a focused branch before writing the plan file\./);
+	assert.match(workerAgent, /If the repo is on a default branch such as `main` or `master`/);
+	assert.match(workerAgent, /If the working tree has unrelated uncommitted changes that make switching branches unsafe, stop and report the blocker/);
+	assert.match(planPrompt, /create or reuse a focused feature branch for this new plan when it is safe to do so/);
+	assert.match(scoutAndPlanPrompt, /create or reuse a focused feature branch for this new plan when it is safe to do so/);
+	assert.match(implementPrompt, /create or reuse a focused feature branch for this new plan when it is safe to do so/);
+	assert.match(implementAndReviewPrompt, /create or reuse a focused feature branch for this new plan when it is safe to do so/);
+});
+
 test("tracked-plan agents document validation discovery, interrupted-run recovery, and scoped review metadata", () => {
 	const scoutAgent = readProjectFile("extensions/subagent/agents/scout.md");
 	const plannerAgent = readProjectFile("extensions/subagent/agents/planner.md");
