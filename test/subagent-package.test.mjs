@@ -10,12 +10,19 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "..");
 const packageJsonPath = path.join(projectRoot, "package.json");
 const subagentIndexPath = path.join(projectRoot, "extensions/subagent/index.ts");
-const bundledScoutPath = path.join(projectRoot, "extensions/subagent/agents/scout.md");
-const bundledCoordinatorPath = path.join(projectRoot, "extensions/subagent/agents/coordinator.md");
-const bundledImplementPromptPath = path.join(projectRoot, "extensions/subagent/prompts/implement.md");
+const bundledPlannerPath = path.join(projectRoot, "extensions/subagent/agents/planner.md");
+const bundledExecutorPath = path.join(projectRoot, "extensions/subagent/agents/executor.md");
+const bundledReviewerPath = path.join(projectRoot, "extensions/subagent/agents/reviewer.md");
+const bundledWorkerPath = path.join(projectRoot, "extensions/subagent/agents/worker.md");
+const removedScoutPath = path.join(projectRoot, "extensions/subagent/agents/scout.md");
+const removedCoordinatorPath = path.join(projectRoot, "extensions/subagent/agents/coordinator.md");
 const bundledPlanPromptPath = path.join(projectRoot, "extensions/subagent/prompts/plan.md");
 const bundledExecutePlanPromptPath = path.join(projectRoot, "extensions/subagent/prompts/execute-plan.md");
-const bundledContinuePlanPromptPath = path.join(projectRoot, "extensions/subagent/prompts/continue-plan.md");
+const bundledImplementPromptPath = path.join(projectRoot, "extensions/subagent/prompts/implement.md");
+const bundledImplementAndReviewPromptPath = path.join(projectRoot, "extensions/subagent/prompts/implement-and-review.md");
+const bundledReviewPromptPath = path.join(projectRoot, "extensions/subagent/prompts/review.md");
+const removedContinuePlanPromptPath = path.join(projectRoot, "extensions/subagent/prompts/continue-plan.md");
+const removedScoutAndPlanPromptPath = path.join(projectRoot, "extensions/subagent/prompts/scout-and-plan.md");
 
 function readPackageJson() {
 	return JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
@@ -35,7 +42,7 @@ function createPiStyleJiti() {
 	});
 }
 
-test("package publishes the subagent extension and prompts with pi metadata", () => {
+test("package publishes only the simplified subagent agents and primary prompts", () => {
 	const pkg = readPackageJson();
 
 	assert.ok(pkg.files.includes("extensions"), "package.json files should include extensions");
@@ -46,12 +53,34 @@ test("package publishes the subagent extension and prompts with pi metadata", ()
 	);
 
 	assert.ok(fs.existsSync(subagentIndexPath), "extensions/subagent/index.ts should exist");
-	assert.ok(fs.existsSync(bundledScoutPath), "extensions/subagent/agents/scout.md should exist");
-	assert.ok(fs.existsSync(bundledCoordinatorPath), "extensions/subagent/agents/coordinator.md should exist");
-	assert.ok(fs.existsSync(bundledImplementPromptPath), "extensions/subagent/prompts/implement.md should exist");
+	assert.ok(fs.existsSync(bundledPlannerPath), "extensions/subagent/agents/planner.md should exist");
+	assert.ok(fs.existsSync(bundledExecutorPath), "extensions/subagent/agents/executor.md should exist");
+	assert.ok(fs.existsSync(bundledReviewerPath), "extensions/subagent/agents/reviewer.md should exist");
+	assert.ok(fs.existsSync(bundledWorkerPath), "extensions/subagent/agents/worker.md should exist");
+	assert.equal(fs.existsSync(removedScoutPath), false, "extensions/subagent/agents/scout.md should not exist");
+	assert.equal(
+		fs.existsSync(removedCoordinatorPath),
+		false,
+		"extensions/subagent/agents/coordinator.md should not exist",
+	);
 	assert.ok(fs.existsSync(bundledPlanPromptPath), "extensions/subagent/prompts/plan.md should exist");
 	assert.ok(fs.existsSync(bundledExecutePlanPromptPath), "extensions/subagent/prompts/execute-plan.md should exist");
-	assert.ok(fs.existsSync(bundledContinuePlanPromptPath), "extensions/subagent/prompts/continue-plan.md should exist");
+	assert.ok(fs.existsSync(bundledImplementPromptPath), "extensions/subagent/prompts/implement.md should exist");
+	assert.ok(
+		fs.existsSync(bundledImplementAndReviewPromptPath),
+		"extensions/subagent/prompts/implement-and-review.md should exist",
+	);
+	assert.ok(fs.existsSync(bundledReviewPromptPath), "extensions/subagent/prompts/review.md should exist");
+	assert.equal(
+		fs.existsSync(removedContinuePlanPromptPath),
+		false,
+		"extensions/subagent/prompts/continue-plan.md should not exist",
+	);
+	assert.equal(
+		fs.existsSync(removedScoutAndPlanPromptPath),
+		false,
+		"extensions/subagent/prompts/scout-and-plan.md should not exist",
+	);
 });
 
 test("subagent loads through pi's extension loader aliases", async () => {
@@ -60,62 +89,65 @@ test("subagent loads through pi's extension loader aliases", async () => {
 	assert.equal(typeof factory, "function");
 });
 
-test("tracked-plan chain prompts explicitly pass prior outputs between planning, materialization, execution, and review steps", () => {
+test("primary prompts explicitly hand off between planner, executor, and reviewer", () => {
 	const planPrompt = readProjectFile("extensions/subagent/prompts/plan.md");
-	const scoutAndPlanPrompt = readProjectFile("extensions/subagent/prompts/scout-and-plan.md");
 	const implementPrompt = readProjectFile("extensions/subagent/prompts/implement.md");
 	const implementAndReviewPrompt = readProjectFile("extensions/subagent/prompts/implement-and-review.md");
+	const reviewPrompt = readProjectFile("extensions/subagent/prompts/review.md");
 
-	assert.match(planPrompt, /using this scout output as context:\n\{previous\}/);
+	assert.match(planPrompt, /use the "planner" agent to investigate the codebase/i);
 	assert.match(planPrompt, /materialize exactly this planner output[\s\S]*\n\{previous\}/);
-	assert.match(planPrompt, /return the full structured worker output, including a `## Plan File` section/);
-	assert.match(scoutAndPlanPrompt, /using this scout output as context:\n\{previous\}/);
-	assert.match(scoutAndPlanPrompt, /materialize exactly this planner output[\s\S]*\n\{previous\}/);
-	assert.match(scoutAndPlanPrompt, /return the full structured worker output, including a `## Plan File` section/);
+	assert.match(planPrompt, /use the "executor" agent/i);
+	assert.doesNotMatch(planPrompt, /use the "scout" agent/i);
+	assert.doesNotMatch(planPrompt, /use the "worker" agent/i);
 	assert.match(implementPrompt, /materialize exactly this planner output[\s\S]*\n\{previous\}/);
-	assert.match(implementPrompt, /return the full structured worker output, including a `## Plan File` section/);
-	assert.match(implementPrompt, /execute the tracked plan described in this worker output:\n\{previous\}/);
-	assert.match(implementAndReviewPrompt, /execute the tracked plan described in this worker output:\n\{previous\}/);
-	assert.match(implementAndReviewPrompt, /return the full structured worker output, including a `## Plan File` section/);
-	assert.match(implementAndReviewPrompt, /review the implementation using this coordinator output as scope:\n\{previous\}/);
+	assert.match(implementPrompt, /execute the tracked plan it describes:\n\{previous\}/);
+	assert.match(implementAndReviewPrompt, /review the implementation using this executor output as scope:\n\{previous\}/);
 	assert.match(implementAndReviewPrompt, /apply the review feedback described in this review output:\n\{previous\}/);
+	assert.match(reviewPrompt, /run the "reviewer" agent/i);
+	assert.match(reviewPrompt, /preserve any provided `Plan File`, `Task IDs`, `Files Changed`, and validation notes/);
 });
 
-test("new-plan workflows document safe branch creation before plan materialization", () => {
+test("new-plan workflows assign branch setup to executor while workers stay implementation-only", () => {
+	const executorAgent = readProjectFile("extensions/subagent/agents/executor.md");
 	const workerAgent = readProjectFile("extensions/subagent/agents/worker.md");
 	const planPrompt = readProjectFile("extensions/subagent/prompts/plan.md");
-	const scoutAndPlanPrompt = readProjectFile("extensions/subagent/prompts/scout-and-plan.md");
 	const implementPrompt = readProjectFile("extensions/subagent/prompts/implement.md");
 	const implementAndReviewPrompt = readProjectFile("extensions/subagent/prompts/implement-and-review.md");
 
-	assert.match(workerAgent, /If asked to write a new plan inside a git repo, prefer creating or reusing a focused branch before writing the plan file\./);
-	assert.match(workerAgent, /If the repo is on a default branch such as `main` or `master`/);
-	assert.match(workerAgent, /If the working tree has unrelated uncommitted changes that make switching branches unsafe, stop and report the blocker/);
+	assert.match(executorAgent, /If materializing a new plan inside a git repo, create or reuse a focused branch before writing the plan when it is safe to do so\./);
+	assert.match(executorAgent, /If already on a non-default branch, keep it and report that branch in `## Notes`\./);
+	assert.match(
+		executorAgent,
+		/If the working tree has unrelated uncommitted changes that make switching branches unsafe, stop and report the blocker instead of guessing\./,
+	);
 	assert.match(planPrompt, /create or reuse a focused feature branch for this new plan when it is safe to do so/);
-	assert.match(scoutAndPlanPrompt, /create or reuse a focused feature branch for this new plan when it is safe to do so/);
 	assert.match(implementPrompt, /create or reuse a focused feature branch for this new plan when it is safe to do so/);
 	assert.match(implementAndReviewPrompt, /create or reuse a focused feature branch for this new plan when it is safe to do so/);
+	assert.doesNotMatch(workerAgent, /Plan materialization mode/i);
+	assert.doesNotMatch(workerAgent, /write a new plan inside a git repo/i);
+	assert.match(workerAgent, /Do NOT edit the shared plan file unless the caller explicitly tells you to do so\./);
 });
 
 test("tracked-plan agents document validation discovery, interrupted-run recovery, and scoped review metadata", () => {
-	const scoutAgent = readProjectFile("extensions/subagent/agents/scout.md");
 	const plannerAgent = readProjectFile("extensions/subagent/agents/planner.md");
-	const coordinatorAgent = readProjectFile("extensions/subagent/agents/coordinator.md");
+	const executorAgent = readProjectFile("extensions/subagent/agents/executor.md");
 	const reviewerAgent = readProjectFile("extensions/subagent/agents/reviewer.md");
 	const executePlanPrompt = readProjectFile("extensions/subagent/prompts/execute-plan.md");
-	const continuePlanPrompt = readProjectFile("extensions/subagent/prompts/continue-plan.md");
 
-	assert.match(scoutAgent, /## Validation Commands/);
-	assert.match(scoutAgent, /package\.json/);
-	assert.match(plannerAgent, /Prefer validation commands discovered in the scout output/);
-	assert.match(coordinatorAgent, /Recover stale `\[-\]` tasks from interrupted runs/);
-	assert.match(coordinatorAgent, /## Task IDs/);
-	assert.match(coordinatorAgent, /## Files Changed/);
+	assert.match(plannerAgent, /discover repo-specific validation commands and nearby tests\/config/i);
+	assert.match(plannerAgent, /package\.json/);
+	assert.match(plannerAgent, /Bash is for read-only discovery commands only/);
+	assert.match(executorAgent, /Recover stale `\[-\]` tasks from interrupted runs/);
+	assert.match(executorAgent, /## Mode/);
+	assert.match(executorAgent, /## Branch/);
+	assert.match(executorAgent, /## Task IDs/);
+	assert.match(executorAgent, /## Files Changed/);
 	assert.match(reviewerAgent, /If the input includes `Plan File`, `Task IDs`, or `Files Changed`/);
 	assert.match(reviewerAgent, /## Validation Notes/);
+	assert.match(executePlanPrompt, /run the "executor" agent/i);
 	assert.match(executePlanPrompt, /recover stale `\[-\]` tasks from interrupted runs/);
 	assert.match(executePlanPrompt, /discover repo-specific validation commands/);
-	assert.match(continuePlanPrompt, /recover stale `\[-\]` tasks from interrupted runs/);
 });
 
 test("resolvePreferredModel qualifies ambiguous bare model ids using the current provider", async () => {
@@ -196,7 +228,7 @@ test("discoverAgents skips malformed files and invalidates cached directory read
 	}
 });
 
-test("bundled subagent agents act as defaults and can be overridden", async () => {
+test("bundled primary agents are discoverable, removed aliases are gone, and overrides still work", async () => {
 	const jiti = createPiStyleJiti();
 	const { discoverAgents } = await jiti.import(path.join(projectRoot, "extensions/subagent/agents.ts"));
 
@@ -213,26 +245,34 @@ test("bundled subagent agents act as defaults and can be overridden", async () =
 
 	try {
 		const bundledOnly = discoverAgents(projectRootDir, "user");
-		const bundledScout = bundledOnly.agents.find((agent) => agent.name === "scout");
-		const bundledCoordinator = bundledOnly.agents.find((agent) => agent.name === "coordinator");
-		assert.ok(bundledScout, "bundled scout agent should be discovered");
-		assert.ok(bundledCoordinator, "bundled coordinator agent should be discovered");
-		assert.equal(bundledScout.source, "package");
-		assert.equal(bundledCoordinator.source, "package");
+		const bundledPlanner = bundledOnly.agents.find((agent) => agent.name === "planner");
+		const bundledExecutor = bundledOnly.agents.find((agent) => agent.name === "executor");
+		const bundledReviewer = bundledOnly.agents.find((agent) => agent.name === "reviewer");
+		const bundledWorker = bundledOnly.agents.find((agent) => agent.name === "worker");
+		assert.ok(bundledPlanner, "bundled planner agent should be discovered");
+		assert.ok(bundledExecutor, "bundled executor agent should be discovered");
+		assert.ok(bundledReviewer, "bundled reviewer agent should be discovered");
+		assert.ok(bundledWorker, "bundled worker agent should be discovered");
+		assert.equal(bundledPlanner.source, "package");
+		assert.equal(bundledExecutor.source, "package");
+		assert.equal(bundledReviewer.source, "package");
+		assert.equal(bundledWorker.source, "package");
+		assert.equal(bundledOnly.agents.find((agent) => agent.name === "scout"), undefined);
+		assert.equal(bundledOnly.agents.find((agent) => agent.name === "coordinator"), undefined);
 
 		fs.writeFileSync(
-			path.join(userAgentsDir, "scout.md"),
-			"---\nname: scout\ndescription: User scout override\n---\n\nUser override.",
+			path.join(userAgentsDir, "executor.md"),
+			"---\nname: executor\ndescription: User executor override\n---\n\nUser override.",
 		);
 		const withUserOverride = discoverAgents(projectRootDir, "user");
-		assert.equal(withUserOverride.agents.find((agent) => agent.name === "scout")?.source, "user");
+		assert.equal(withUserOverride.agents.find((agent) => agent.name === "executor")?.source, "user");
 
 		fs.writeFileSync(
-			path.join(projectAgentsDir, "scout.md"),
-			"---\nname: scout\ndescription: Project scout override\n---\n\nProject override.",
+			path.join(projectAgentsDir, "executor.md"),
+			"---\nname: executor\ndescription: Project executor override\n---\n\nProject override.",
 		);
 		const withProjectOverride = discoverAgents(path.join(projectRootDir, "src"), "both");
-		assert.equal(withProjectOverride.agents.find((agent) => agent.name === "scout")?.source, "project");
+		assert.equal(withProjectOverride.agents.find((agent) => agent.name === "executor")?.source, "project");
 	} finally {
 		if (previousAgentDir === undefined) delete process.env.PI_CODING_AGENT_DIR;
 		else process.env.PI_CODING_AGENT_DIR = previousAgentDir;

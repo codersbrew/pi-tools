@@ -24,12 +24,22 @@ Adds a `/update-pi` slash command that upgrades `@mariozechner/pi-coding-agent` 
 #### `subagent`
 Delegates work to specialized subagents that run in isolated `pi` subprocesses.
 
-Bundled defaults:
-- built-in agents: `scout`, `planner`, `reviewer`, `worker`, `coordinator`
-- packaged prompt templates: `/plan`, `/execute-plan`, `/continue-plan`, `/implement`, `/scout-and-plan`, `/implement-and-review`
-- tracked markdown plans written to `plan/*.md` with task IDs, status checkboxes, dependency metadata, and validation steps
-- coordinators can fan out safe parallel worker batches and update shared plan files as work completes
-- live streaming of subagent progress, tool calls, usage, and final markdown output
+Primary bundled agents:
+- `planner` - investigates the codebase and produces tracked plans
+- `executor` - materializes, executes, resumes, and updates tracked plans
+- `reviewer` - performs an independent read-only review pass
+
+Internal helper:
+- `worker` - delegated implementation helper used by the executor
+
+Primary prompt templates:
+- `/plan`
+- `/execute-plan`
+- `/implement`
+- `/implement-and-review`
+- `/review`
+
+Tracked markdown plans are written to `plan/*.md` with task IDs, status checkboxes, dependency metadata, and validation steps. Executors can fan out safe parallel worker batches, resume interrupted work, and update shared plan files as work completes.
 
 Override behavior:
 - packaged agents act as defaults
@@ -76,13 +86,12 @@ After installing the package, the prompt templates are available directly in pi:
 ```bash
 /plan add Redis caching to the session store
 /execute-plan plan/add-redis-caching.md
-/continue-plan plan/add-redis-caching.md
 /implement add Redis caching to the session store
-/scout-and-plan refactor auth to support OAuth
 /implement-and-review add input validation to API endpoints
+/review src/api/handlers.ts src/api/validation.ts
 ```
 
-Tracked plans are written to `plan/*.md`. New-plan workflows create or reuse a focused git branch before materializing the plan when the checkout is clean enough to do so safely. Tasks are checked off in place, blocked tasks are marked explicitly, and testing/type-checking is required before coordinated workflows mark implementation tasks complete.
+Tracked plans are written to `plan/*.md`. New-plan workflows create or reuse a focused git branch before materializing the plan when the checkout is clean enough to do so safely. Tasks are checked off in place, blocked tasks are marked explicitly, and testing/type-checking is required before executors mark implementation tasks complete.
 
 To customize or add agents, create markdown agent files in either:
 - `~/.pi/agent/agents/` for your personal defaults

@@ -13,20 +13,20 @@ This copy is bundled inside `@codersbrew/pi-tools` as a package-ready adaptation
 
 ## Bundled defaults
 
-The package ships these default agents:
-- `scout`
+Primary bundled agents:
 - `planner`
+- `executor`
 - `reviewer`
-- `worker`
-- `coordinator`
 
-And these prompt templates:
+Internal helper:
+- `worker` - delegated implementation helper used by the executor
+
+Primary prompt templates:
 - `/plan`
 - `/execute-plan`
-- `/continue-plan`
 - `/implement`
-- `/scout-and-plan`
 - `/implement-and-review`
+- `/review`
 
 ## Override precedence
 
@@ -51,19 +51,19 @@ When running interactively, the tool prompts for confirmation before running pro
 ### Single agent
 
 ```text
-Use scout to find all authentication code
+Use planner to investigate all authentication code and write a tracked plan
 ```
 
 ### Parallel execution
 
 ```text
-Run 2 scouts in parallel: one to find models, one to find providers
+Run 2 reviewers in parallel: one to inspect API handlers, one to inspect schema validation
 ```
 
 ### Chained workflow
 
 ```text
-Use a chain: first have scout find the read tool, then have planner suggest improvements
+Use a chain: first have planner create a tracked plan, then have executor materialize it
 ```
 
 ### Prompt templates
@@ -71,13 +71,12 @@ Use a chain: first have scout find the read tool, then have planner suggest impr
 ```text
 /plan add Redis caching to the session store
 /execute-plan plan/add-redis-caching.md
-/continue-plan plan/add-redis-caching.md
 /implement add Redis caching to the session store
-/scout-and-plan refactor auth to support OAuth
 /implement-and-review add input validation to API endpoints
+/review src/api/handlers.ts src/api/validation.ts
 ```
 
-Tracked plans are written to `plan/*.md` and use a shared status legend (`[ ]`, `[-]`, `[x]`, `[!]`) so coordinators can safely resume work, batch independent tasks into parallel worker runs, and record validation before checking tasks off. New-plan workflows also tell the materializing worker to create or reuse a focused git branch before writing the plan when the checkout is clean enough to do so safely.
+Tracked plans are written to `plan/*.md` and use a shared status legend (`[ ]`, `[-]`, `[x]`, `[!]`) so executors can safely resume work, batch independent tasks into parallel worker runs, and record validation before checking tasks off. New-plan workflows also tell the executor to create or reuse a focused git branch before writing the plan when the checkout is clean enough to do so safely.
 
 ## Agent definitions
 
@@ -96,4 +95,4 @@ System prompt for the agent goes here.
 
 `model` can be either a single model id or a comma-separated preference list. The subagent uses the first available model from the list.
 
-The bundled planner emits tracked markdown plans, workers can materialize or execute assigned plan tasks, and the coordinator agent can orchestrate safe parallel worker batches while updating the shared plan file.
+The bundled planner investigates the repo and emits tracked markdown plans, the executor materializes and executes them, reviewers provide an independent read-only pass, and internal workers handle delegated implementation batches.
