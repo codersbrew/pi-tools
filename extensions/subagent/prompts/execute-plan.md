@@ -1,7 +1,7 @@
 ---
-description: Coordinator executes an existing tracked plan with parallel workers and plan updates
+description: Executor executes an existing tracked plan with parallel workers and in-place plan updates
 ---
-Use the subagent tool to run the "coordinator" agent on this task:
+Use the subagent tool to run the "executor" agent on this task:
 
 Execute the tracked plan at: $@
 
