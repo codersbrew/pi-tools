@@ -57,6 +57,17 @@ Invoke it in pi with:
 /skill:github-workflow
 ```
 
+### Skill: `plan`
+A `/plan`-style planning skill that investigates the codebase and writes a tracked markdown plan under `plan/`, but does the work in the current conversation context instead of delegating to the bundled subagent workflow.
+
+It is useful when you want the same planning output shape as `/plan` without spinning up a separate planner/executor process.
+
+Invoke it in pi with:
+
+```bash
+/skill:plan add Redis caching to the session store
+```
+
 ## Install
 
 Global install:
@@ -93,6 +104,12 @@ After installing the package, the prompt templates are available directly in pi:
 
 Tracked plans are written to `plan/*.md`. New-plan workflows create or reuse a focused git branch before materializing the plan when the checkout is clean enough to do so safely. Tasks are checked off in place, blocked tasks are marked explicitly, and testing/type-checking is required before executors mark implementation tasks complete.
 
+If you want the same tracked-plan output without subagent delegation, use the skill instead:
+
+```bash
+/skill:plan add Redis caching to the session store
+```
+
 To customize or add agents, create markdown agent files in either:
 - `~/.pi/agent/agents/` for your personal defaults
 - `.pi/agents/` for project-local agents
@@ -105,6 +122,7 @@ This package uses pi's standard package manifest and currently publishes:
 - `extensions/update-pi.ts`
 - `extensions/subagent/index.ts`
 - `skills/github-workflow/SKILL.md`
+- `skills/plan/SKILL.md`
 - `extensions/subagent/prompts/*.md`
 
 The root `package.json` exposes them through:
