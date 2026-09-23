@@ -1,5 +1,32 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import * as path from "node:path";
+import * as os from "node:os";
+
+// Only bypass confirmation for a standalone rm -rf whose every target is a literal
+// child of a temporary directory. Shell operators, globbing and traversal must
+// fall back to the normal dangerous-command prompt.
+export function isTempCleanup(command: string): boolean {
+  const tokens = command.trim().split(/\s+/);
+  if (tokens.shift() !== "rm") return false;
+
+  let recursive = false;
+  let force = false;
+  while (tokens.length && /^-(?:[rf]+|-recursive|-force)$/.test(tokens[0])) {
+    const option = tokens.shift()!;
+    recursive ||= option === "--recursive" || option.includes("r");
+    force ||= option === "--force" || option.includes("f");
+  }
+  if (!recursive || !force || tokens.length === 0) return false;
+
+  const roots = ["/tmp", "/private/tmp", "/var/tmp", "tmp", "./tmp", os.tmpdir().replace(/\/$/, "")];
+  return tokens.every((token) => {
+    const target = token.replace(/^(['"])(.*)\1$/, "$2");
+    // Restrict targets to plain paths: no expansion, operators, globbing or dot segments.
+    if (!/^[\w./-]+$/.test(target) || target.split("/").includes("..")) return false;
+    return roots.some((root) => target.startsWith(`${root}/`) &&
+      target.slice(root.length + 1).split("/").every((part) => part !== "" && part !== "." && part !== ".."));
+  });
+}
 
 /**
  * Comprehensive security hook:
@@ -8,7 +35,7 @@ import * as path from "node:path";
  */
 export default function (pi: ExtensionAPI) {
   const dangerousCommands = [
-    { pattern: /\brm\s+(-[^\s]*r|--recursive)/, desc: "recursive delete" }, // rm -rf, rm -r, rm --recursive
+    { pattern: /\brm(?:\s+-[^\s]+)*\s+(?:-[^\s]*r|--recursive)/, desc: "recursive delete" }, // rm -rf, rm -f -r, rm --recursive
     { pattern: /\bsudo\b/, desc: "sudo command" }, // sudo anything
     { pattern: /\b(chmod|chown)\b.*777/, desc: "dangerous permissions" }, // chmod 777, chown 777
     { pattern: /\bmkfs\b/, desc: "filesystem format" }, // mkfs.ext4, mkfs.xfs
@@ -53,6 +80,7 @@ export default function (pi: ExtensionAPI) {
 
       for (const { pattern, desc } of dangerousCommands) {
         if (pattern.test(command)) {
+          if (desc === "recursive delete" && isTempCleanup(command)) continue;
           if (!ctx.hasUI) {
             return { block: true, reason: `Blocked ${desc} (no UI to confirm)` };
           }
