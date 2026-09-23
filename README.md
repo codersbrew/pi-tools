@@ -8,7 +8,7 @@ A publishable [pi](https://github.com/badlogic/pi-mono) package that bundles Cod
 
 #### `security`
 Protects common dangerous tool operations by:
-- warning or blocking risky `bash` commands such as `rm -rf`, `sudo`, and destructive disk operations
+- warning or blocking risky `bash` commands such as `rm -rf`, `sudo`, and destructive disk operations; standalone `rm -rf` of literal children under `/tmp`, `/var/tmp`, `./tmp`, or the system temporary directory skips confirmation
 - blocking writes to sensitive paths like `.env`, `.git`, `node_modules`, SSH keys, and common secrets files
 - prompting before lockfile edits such as `package-lock.json`, `yarn.lock`, and `pnpm-lock.yaml`
 
